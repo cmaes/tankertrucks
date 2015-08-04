@@ -14,13 +14,15 @@ def mycallback(model, where):
 def km2mi(km):
     return 0.621371*km
 
-def optimize(siteNames, demand, dist, capacity):
+def optimize(siteNames, demand, dist, capacity, output=False):
 
     sites = range(len(siteNames))
     clients = sites[1:]
 
-    print 'Creating Model'
     model = Model('Diesel Fuel Delivery')
+
+    if not output:
+        model.params.OutputFlag = 0
 
     prec = {}
     for i in sites:
@@ -122,6 +124,9 @@ def optimize(siteNames, demand, dist, capacity):
                 volume = [0]
         return volumes
 
+    print >>output, "\n"
+    print >>output, '-'*80
+    print >>output, "\n"
     count = printTour(0, 0, 1, output)
     print >>output, "Total distance driven: %g mi" % km2mi(model.ObjVal)
     print >>output,  "Total tankers needed: %d" % count
@@ -140,7 +145,7 @@ def handleoptimize(jsdict):
         return jsout
 
 if __name__ == '__main__':
-    jsdict = json.loads(sys.stdin)
+    jsdict = json.load(sys.stdin)
     jsdict = handleoptimize(jsdict)
     print 'Content-Type: application/json\n\n'
     print json.dumps(jsdict)
