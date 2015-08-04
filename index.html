@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Routing Tanker Trucks with Gurobi</title>
+<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&key=AIzaSyAF3PMeM_Cxy8SZe8ulcSLrKwQ8QtBT7lY&sensor=false"></script>
+<script src="http://d3js.org/d3.v3.js"></script>
+<script src="http://fgnass.github.io/spin.js/spin.js"></script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+                      tex2jax: {inlineMath: [['$', '$'], ['\\(','\\)']]},
+                      TeX: { equationNumbers: {autoNumber: "AMS"} },
+                      "HTML-CSS": { showMathMenu: false,
+                                    scale: 90 }
+
+                     });
+</script>
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.4.2/pure-min.css">
+<style>
+@import url(http://fonts.googleapis.com/css?family=PT+Serif|PT+Serif:b|PT+Serif:i|PT+Sans|PT+Sans:b);
+@import url(http://fonts.googleapis.com/css?family=Lato);
+
+html {
+   min-width: 1040px;
+}
+
+body {
+   background: #fcfcfa;
+   color: #333;
+   font-family: "PT Serif", serif;
+   /*margin: 0 1em 4em auto;*/
+   position: relative;
+   width: 960px;
+   left: 13em;
+}
+
+h1, h2, h3, h4 { font-family: "Lato", "PT Serif", serif; color: #000; text-rendering: optimizeLegibility; }
+
+h1 {
+  font-size: 64px;
+  line-height: 73px;
+  font-weight: 900;
+  margin-top: 0.67em;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
+}
+
+h2 {
+   margin-top: 2em;
+}
+
+subtitle {
+   display:block;
+   font-family: "PT Serif", serif;
+   font-size: 32px;
+   font-style: italic;
+   font-weight: 100;
+}
+
+p {
+  line-height: 150%;
+  width: 720px;
+}
+
+a {
+  color: steelblue;
+  cursor: auto;
+}
+
+a:not(:hover) {
+   text-decoration: none;
+}
+
+pre {
+   border-left: solid 2px #ccc;
+   padding-left: 18px;
+   margin: 2em 0 2em -20px;
+}
+
+aside {
+   font-size: small;
+   right: 0;
+   position: absolute;
+   width: 180px;
+}
+
+.demandtable thead {
+   border-bottom: 1px solid #000;
+}
+
+.demandtable td {
+   padding-left: 1em;
+}
+
+.demandtable td:first-child {
+   border-right: 1px solid #000;
+   padding-right: 1em;
+   padding-left: 0;
+}
+
+#distancetable thead {
+   border-bottom: 1px solid #000;
+}
+#distancetable td:first-child {
+   border-right: 1px solid #000;
+   padding-right: 1em;
+   padding-left: 0;
+}
+#distancetable td {
+   padding-left: 1em;
+}
+
+.big {
+   font-size: 1.25em;
+   margin: 0 auto;
+   text-align: center;
+   padding-bottom: 20px;
+}
+
+#legend {
+   font-family: "Lato", serif;
+   padding: 2px;
+   color: #fff;
+   font-size: large;
+   font-weight: 500;
+   width: 100px;
+}
+
+#legend li {
+   padding-left: 5px;
+   margin-top: 1px;
+   margin-bottom: 1px;
+}
+
+#nav {
+        left: 5px;
+        font-family: "Lato", serif;
+        font-weight: 700;
+        list-style: none;
+        margin: 0;
+        position: fixed;
+        top: 10px;
+        box-sizing: border-box;
+}
+
+#nav li {
+        margin-bottom: 0px;
+}
+
+#nav a {
+        color: #333;
+        display: block;
+        font-size: 14px;
+        border-left: 3px solid #fcfcfa;
+        padding: 5px 10px;
+        text-decoration: none;
+}
+
+#nav a:hover {
+   border-left: 3px solid steelblue;
+}
+
+#nav .current a {
+   border-left: 3px solid steelblue;
+}
+
+.node circle {
+   stroke: #000;
+   stroke-width: 1.5px;
+}
+
+.node text {
+   font: 14px sans-serif;
+   pointer-events: none;
+   text-shadow: none;
+}
+
+.link {
+   stroke: #999;
+   stroke-opacity: .6;
+}
+
+.link1 {
+  fill: none;
+  stroke: #666;
+  stroke-width: 1.5px;
+}
+
+text {
+   font: 12px sans-serif;
+   pointer-events: none;
+   text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+}
+
+circle {
+   fill: #ccc;
+   stroke: #333;
+   stroke-width: 1.5px;
+}
+
+#map-canvas {
+  height: 500px;
+  width:  100%;
+}
+#order-form {
+  width: 720px;
+}
+.order-table {
+   margin-top: 10px;
+   margin-bottom: 20px;
+}
+
+#outputDiv {
+ min-height: 300px;
+ clear: both;
+ font-size: 14px;
+ width: 100%;
+}
+#address {
+ width: 100%;
+}
+#submit {
+ width: 100%;
+ margin-bottom: 10px;
+}
+
+#description {
+  width: 100%
+}
+</style>
+</head>
+<body>
+  <ul id="nav">
+    <li class="current"><a href="#intro">Intro</a></li>
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#model">Model</a></li>
+    <li><a href="#implementation">Implementation</a></li>
+    <li><a href="#demo">Live Demo</a></li>
+  </ul>
+
+  <div id="container">
+    <div class="section" id="intro">
+      <h1>Routing Tanker Trucks</h1>
+        <subtitle>with integer programming and Gurobi</subtitle>
+
+        <p>
+        In this example we'll solve a simple vehicle routing problem:  how to
+        deliver diesel fuel by tanker truck to customers while driving
+        the fewest miles.
+        </p>
+
+        <p>
+        We'll construct a mathematical model of the business problem,
+        implement this model in Gurobi's Python interface, and compute
+        and visualize an optimal solution.
+        </p>
+
+        <p> Although you may not have to route tanker trucks in your own
+        business, the same basic techniques used in this example translate
+        to many different problems and applications.
+        </p>
+
+     </div>
+     <div class="section" id="problem">
+      <h2><a href="#problem" name="problem">Problem Description</a></h2>
+      <p><img src="refueller-nocolor-crop.jpg" style="height:auto; width:280px; float:right">
+        Let's begin with a basic description of the problem. A diesel
+        transporter located in Reno, Nevada needs to deliver fuel to
+        seven local customers in: South Lake Tahoe, Carson City, Garnerville,
+        Fernely, Tahoe City, Incline Village, and Truckee.
+      </p>
+      <p>
+        The diesel fuel demands
+        of all customers (in liters) are listed
+        in the table below:
+      </p>
+
+
+      <table class="demandtable">
+      <thead>
+      <tr><td>Client</td>
+          <td>South Lake Tahoe</td>
+          <td>Carson City</td>
+          <td>Garnerville</td>
+          <td>Fernerly</td>
+          <td>Tahoe City</td>
+          <td>Incline Village</td>
+          <td>Truckee</td>
+      </tr>
+      </thead>
+      <tbody>
+      <tr><td>Demand</td>
+          <td>1000</td>
+          <td>1200</td>
+          <td>1600</td>
+          <td>1400</td>
+          <td>1200</td>
+          <td>1000</td>
+          <td>1700</td>
+      </tr>
+      </tbody>
+      </table>
+
+      <p>The transport company uses tankers with a capacity of 4500
+        liters for the deliveries. Our goal is to determine the
+        delivery routes that minimize the total miles
+        driven.  </p>
+
+      <p>The following table shows the driving distance (in miles)
+        between each pair of sites:</p>
+      <table id="distancetable">
+      <thead>
+      <tr>
+      <td></td>
+      <td>Reno</td>
+      <td>South Lake Tahoe</td>
+      <td>Carson City</td>
+      <td>Garnerville</td>
+      <td>Fernerly</td>
+      <td>Tahoe City</td>
+      <td>Incline Village</td>
+      <td>Truckee</td>
+      </tr>
+      <tbody>
+      <tr><td>Reno</td>
+          <td></td>
+          <td>59.3</td>
+          <td>31.6</td>
+          <td>47.8</td>
+          <td>34.2</td>
+          <td>47.1</td>
+          <td>36.1</td>
+          <td>31.9</td>
+      </tr>
+      <tr><td>South Lake Tahoe</td>
+          <td>62.2</td>
+          <td></td>
+          <td>27.9</td>
+          <td>21.0</td>
+          <td>77.5</td>
+          <td>30.0</td>
+          <td>27.1</td>
+          <td>44.7</td>
+      </tr>
+      <tr><td>Carson City</td>
+          <td>32.2</td>
+          <td>27.7</td>
+          <td></td>
+          <td>16.2</td>
+          <td>50.0</td>
+          <td>39.4</td>
+          <td>24.9</td>
+          <td>42.6</td>
+      </tr>
+      <tr><td>Gardnerville</td>
+          <td>50.7</td>
+          <td>21.0</td>
+          <td>16.4</td>
+          <td></td>
+          <td>66.1</td>
+          <td>49.7</td>
+          <td>35.2</td>
+          <td>52.9</td>
+      </tr>
+      <tr><td>Fernley</td>
+          <td>34.4</td>
+          <td>77.4</td>
+          <td>49.6</td>
+          <td>65.9</td>
+          <td></td>
+          <td>80.8</td>
+          <td>67.1</td>
+          <td>65.5</td>
+      </tr>
+      <tr><td>Tahoe City</td>
+          <td>46.9</td>
+          <td>30.1</td>
+          <td>39.6</td>
+          <td>49.7</td>
+          <td>80.5</td>
+          <td></td>
+          <td>14.4</td>
+          <td>15.0</td>
+      </tr>
+      <tr><td>Incline Village</td>
+          <td>36.9</td>
+          <td>27.1</td>
+          <td>25.2</td>
+          <td>35.2</td>
+          <td>67.1</td>
+          <td>14.4</td>
+          <td></td>
+          <td>17.6</td>
+      </tr>
+      <tr><td>Truckee</td>
+          <td>31.9</td>
+          <td>44.7</td>
+          <td>62.8</td>
+          <td>52.8</td>
+          <td>65.5</td>
+          <td>15.0</td>
+          <td>17.6</td>
+          <td></td>
+      </tbody>
+      </table>
+      <p>
+        You can get this distance
+        data from Google Maps's
+        <a href="https://developers.google.com/maps/documentation/distancematrix/">Distance Matrix API</a>,
+        but for a small problem with only a few clients, you can just search for each pair directly
+        on Google Maps.
+      </p>
+
+      <p>Without further ado, here is a visualization of the final truck routes.
+        You can also jump <a href="#demo">directly to the live demo.</a>
+     </p>
+
+      <aside>
+      <p>Reno, the origin, is
+      <img src="https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=O|FFFF00|000000">
+      </p>
+
+      <p>Clients, or destinations, are <img
+      src="https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=D|FF0000|000000">
+      </p>
+
+      <ul id="legend">
+      <li style="background:#03a2c9">Truck 1</li>
+      <li style="background:#fe3696">Truck 2</li>
+      <li style="background:#43d060">Truck 3</li>
+      </ul>
+      </aside>
+      <img src="sample2.png">
+
+      <p> Three trucks (or truckloads) are required to service all
+      clients. The paths of each truck are shown. The width
+      of each truck's path represents the volume of diesel in the
+      tank. After dropping fuel off at a client's site the volume
+      of diesel in the truck, and the width of the path, decreases.
+      </p>
+
+    </div>
+    <div class="section" id="model">
+      <h2><a href="#model" name="model">Mathematical Model</a></h2>
+      <p> This problem was originally formulated in 1959 by Dantzig
+        and Ramser. They named it
+        the <a href="https://andresjaquep.files.wordpress.com/2008/10/2627477-clasico-dantzig.pdf">Truck
+        Dispatching Problem</a> and considered it to be a generalization
+        of the famous <a href="http://en.wikipedia.org/wiki/Travelling_salesman_problem">Traveling
+        Salesman Problem</a>.
+        <p>
+
+      <p>Here the salesmen are the truck drivers that must start and
+        finish each tour at the depot in Reno. As in the TSP, we must
+        determine the order of the clients that are visited within
+        each tour. But unlike the TSP, we are allowed to have multiple
+        tours. We must compute the number of tours (or truck drivers)
+        that are needed to complete all deliveries.
+        </p>
+
+     <p>We don't need to capture the structure of the roads to solve
+        this problem. We only need know the driving distance between
+        each pair of clients (and the transport company's depot). For
+        example, we only need to know how many miles there are in the
+        shortest route between Carson City and South Lake Tahoe, not
+        the step-by-step driving directions.
+      <p>
+
+      <p>This means our problem defines a graph. Clients (and the depot) are represented
+         by nodes in the graph. There are two directed edges between every pair of nodes,
+         and a driving distance associated with each edge.
+      </p>
+      <aside> The length of the edges in this graph is proportional to the driving distance
+              between sites
+      </aside>
+      <div id="distsvg">
+      </div>
+
+
+      <p> We introduce variables $x_{ij}$ such that
+        \[
+        x_{ij} = \begin{cases} 1 & \text{if client $i$ immediately precedes $j$} \\
+                                        0 & \text{otherwise}.
+                          \end{cases}
+        \]
+
+        Let $\mathrm{sites} = \{0, \ldots, N-1\}$ be a set that defines the $N$ sites. We'll say
+        that site $0$ is the depot and that the clients are a subset of $\mathrm{sites}$:
+        \[
+        \mathrm{clients} = \{1, \ldots, N-1\}.
+        \]
+        Let $\mathrm{dist}_{ij}$ be the distance between towns $i$ and $j$. We'll use $q_i$
+        to represent the quantity of fuel ordered by client $i$. Each truck can hold a maximum of
+        $Q$ liters of fuels.  We'll use variables $u_i$ to represent the amount of
+        fuel delivered on a route that includes client $i$.
+       </p>
+
+      <p> Now that we have established a notation, let's take a look at the mathematical model:
+        \[
+        \def\clients{\mathrm{clients}}
+        \def\sites{\mathrm{sites}}
+        \def\dem{q}
+        \def\quant{u}
+        \def\prec{x}
+        \def\dist{\mathrm{dist}}
+        \def\cap{Q}
+        \hspace{-50pt}\begin{align*}
+        \mathrm{minimize} & \sum_{i \in \sites} \sum_{j \in \sites:\ i \ne j} \dist_{ij} \prec_{ij}\\
+        \mathrm{subject\ to} & \sum_{i \in \sites:\ i \ne j} \prec_{ij} = 1,
+        \quad \forall j \in \clients \label{enter}\tag{1}\\
+        & \sum_{j \in \sites:\ i \ne j} \prec_{ij} = 1, \quad \forall i \in \clients  \label{leave} \tag{2}\\
+        &  \dem_i \le \quant_i  \le \cap, \quad \forall i \in \clients \label{bounds} \tag{3}  \\
+        & \quant_i \le \cap + (\dem_i - \cap) \prec_{0i}, \quad \forall i \in \clients \label{first} \tag{4}\\
+        & \quant_i - \quant_j + \cap \prec_{ij} \le \cap - \dem_j, \quad  \forall i, j \in \clients, i \ne j \label{subtour} \tag{5} \\
+        & \prec_{ij} \in \{0, 1 \}, \quad \forall i, j \in \sites \\
+        \end{align*}
+        \]
+      </p>
+
+      <p> The objective of the model is to minimize the total
+        miles driven. We must deliver to each customer once.  This is
+        expressed through constraints \eqref{enter} and \eqref{leave}
+        that require a truck to enter and leave every client exactly
+        once.
+      </p>
+
+      <p>
+      Constraint \eqref{bounds} states that the
+      quantity $u_i$ must be greater than the demand $q_i$ of client
+      $i$, but within the capacity $Q$ of the tankers.
+      </p>
+
+      <p> Constraint \eqref{first} applies to the first client of a
+      tour. If client $i$ is first client in a tour, $x_{0i} = 1$
+      and constraint \eqref{first} is
+      \[
+        u_i \le q_i
+      \]
+      This, together with \eqref{bounds}, force $u_i = q_i$ for the
+      first client of a tour. If client $i$ is not first in a tour,
+      $x_{0i} = 0$ and constraint \eqref{first} is
+      \[
+        u_i \le Q.
+      \]
+      This inequality is redudant, because of the bounds on $u_i$ in \eqref{bounds}
+      </p>
+
+      <p> Together, constraints \eqref{bounds} and \eqref{subtour}
+      eliminate subtours.  To understand
+      constraint \eqref{subtour} consider each case: $x_{ij} = 0$ and
+      $x_{ij} = 1$.</p>
+
+      <p> When $x_{ij} = 0$, constraint \eqref{subtour} is simply \[
+        u_i - u_j \le Q - q_j \] This is a valid inequality, since
+        the maximum value the left-hand side may obtain is
+        \[
+        \begin{array}{rl} Q - q_j = {\displaystyle \underset{u_i, u_j}{\mathrm{maximize}}} & u_i - u_j \\
+                                    \mathrm{subject\ to} & q_i \le u_i \le Q\\
+                                                         & q_j \le u_j \le Q.
+                  \end{array}
+        \]
+        This value is obtained when $u_i = Q$ and $u_j = q_j$.
+      </p>
+
+      <p> When $x_{ij} = 1$, client $j$ immediately follows client $i$, and constraint \eqref{subtour} becomes
+        \[
+        u_j \ge u_i + q_j
+        \]
+        This inequality says that the quantity $u_j$ in the tank at client $j$ must be greater than the quantity in
+        the tank at client $i$ (its immediate predecessor) plus the demand of client $j$.
+        </p>
+
+      <p>
+       By assigning a quantity $u_i$ to every client $i$ we make sure
+        the capacity of the tankers is not exceeded.  We also
+        eliminate any tour, like the one shown below, that does not
+        include the depot. Assigning the strictly increasing values
+        $u_i$ to clients in a tour excludes this type of solution.
+      </p>
+      <div id="infsvg">
+      </div>
+    </div>
+    <div class="section" id="implementation">
+      <h2><a href="#implementation" name="implementation">Implementation</a></h2>
+      <p>Below is the full implementation of the model (and the associated data) in
+        Gurobi's Python interface:
+      </p>
+      <pre>
+from gurobipy import *
+
+siteNames = ["Reno", "South Lake Tahoe", "Carson City", "Garnerville",
+              "Fernerly", "Tahoe City", "Incline Village", "Truckee"]
+sites = range(len(siteNames))
+clients = sites[1:]
+demand = [ 1000, 1200, 1600, 1400, 1200, 1000, 1700]
+dist = [[0, 59.3, 31.6, 47.8, 34.2, 47.1, 36.1, 31.9],
+        [62.2, 0, 27.9, 21.0, 77.5, 30.0, 27.1, 44.7],
+        [32.2, 27.7, 0, 16.2, 50.0, 39.4, 24.9, 42.6],
+        [50.7, 21.0, 16.4, 0, 66.1, 49.7, 35.2, 52.9],
+        [34.4, 77.4, 49.6, 65.9, 0, 80.8, 67.1, 65.5],
+        [46.9, 30.1, 39.6, 49.7, 80.5, 0, 14.4, 15.0],
+        [36.9, 27.1, 25.2, 35.2, 67.1, 14.4, 0, 17.6],
+        [31.9, 44.7, 62.8, 52.8, 65.6, 15.0, 17.6, 0]]
+capacity = 4500
+
+model = Model('Diesel Fuel Delivery')
+
+x = {}
+for i in sites:
+    for j in sites:
+        x[i,j] = model.addVar(vtype=GRB.BINARY)
+
+u = {}
+for i in clients:
+    u[i] = model.addVar(lb=demand[i], ub=capacity)
+
+model.update()
+
+obj = quicksum( dist[i][j]*x[i,j] for i in sites for j in sites if i != j )
+model.setObjective(obj)
+
+for j in clients:
+    model.addConstr(quicksum( x[i,j] for i in sites if i != j ) == 1)
+for i in clients:
+    model.addConstr(quicksum( x[i,j] for j in sites if i != j ) == 1)
+
+for i in clients:
+    model.addConstr(u[i] <= capacity + (demand[i] - capacity)*x[0,i])
+
+for i in clients:
+    for j in clients:
+        if i != j:
+            model.addConstr(u[i] - u[j] + capacity*x[i,j] <= capacity - quant[j])
+
+model.optimize()
+    </pre>
+    </div>
+    <div class="section" id="demo">
+      <h2><a href="#demo" name="demo">Live Demo</a></h2>
+      <p> The app below allows you to explore the solutions generated by the above model. Google's Maps API
+        is used to compute the pairwise driving distances between each of the sites. This distance data, as
+        well as the clients demand, are sent back to web server, where the above model is instantiated with the
+        data and solved in real-time using the Gurobi Optimizer.
+      </p>
+      <p> The demo is initialized with four of the seven clients. Try adding a few more clients to see how
+        the tours change. For example, try adding clients in Tahoe City, Incline Village, and Truckee.
+      </p>
+      <div id="order-form">
+      <div class="pure-form pure-form-stacked">
+        <p>
+          <legend>Add Order</legend>
+          <div class="pure-control-group">
+          </div>
+          <div class="pure-control-group">
+            <label for="address">Address</label>
+            <input type="text" placeholder="Enter Address" class="pure-input" id="address">
+          </div>
+          <div class="pure-control-group">
+            <label for="liters">Liters Requested</label>
+            <input type="number" placeholder="Enter liters of oil" class="pure-input" id="liters" value="1000" min="1" max="4500">
+          </div>
+          <button class="pure-button" onclick="findpos();">Submit Order</button>
+          </p>
+      </div>
+      </div>
+      <div class="order-table">
+      </div>
+      <div id="submit">
+        <button type="button" class="pure-button pure-button-primary" onclick="calculateDistances();">Compute Optimal Delivery Routes</button>
+      </div>
+      <div id="map-canvas"></div>
+      <div id="outputDiv"></div>
+		</div>
+	</div>
+        <!--[if gt IE 8]><!--><script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script><!--<![endif]-->
+        <script src="http://davist11.github.io/jQuery-One-Page-Nav/jquery.nav.js"></script>
+        <script>
+        $(document).ready(function() {
+        $('#nav').onePageNav();
+        });
+        </script>
+</body>
+<script>
+var locationData = [ { address: 'Reno',             liters: 0    },
+                     { address: 'South Lake Tahoe', liters: 1000 },
+                     { address: 'Carson City',      liters: 1200 },
+                     { address: 'Garnerville, NV',  liters: 1600 },
+                     { address: 'Fernely, NV'    ,  liters: 1400 } ];
+var dist = [];
+var table = d3.select('.order-table')
+              .append('table')
+              .attr('class', "demandtable");
+var thead = table.append('thead');
+var tbody = table.append('tbody');
+/*
+var collabels  = ['Client address', 'liters requested'];
+var cols = ['address', 'liters'];
+*/
+
+thead.append('tr')
+     .attr('class', 'clientrow');
+tbody.append('tr')
+     .attr('class', 'demandrow');
+
+var clientrow = d3.select('.clientrow').selectAll('td')
+                  .data(locationData)
+                  .enter()
+                  .append('td')
+                  .text(function(d) {
+                          if (d.address === 'Reno') {
+                              return "Client";
+                          } else {
+                            return d.address;
+                          }
+                       });
+
+var demandrow = d3.select('.demandrow').selectAll('td')
+                 .data(locationData)
+                 .enter()
+                 .append('td')
+                 .text(function(d) {
+                    if (d.liters > 0) {
+                       return d.liters;
+                    } else {
+                       return "Demand";
+                    }
+                  });
+
+var map;
+var geocoder;
+var directionsDisplay;
+var directionsService = new google.maps.DirectionsService();
+var bounds = new google.maps.LatLngBounds();
+var markersArray = [];
+var requestArray = [];
+var renderArray  = [];
+var curr = 0;
+var currmax = 0;
+var colors =  ['#03a2c9', '#fe3696', '#43d060', '#e3ae00', '#d9ee09', 'purple', 'teal', 'blue', 'red', 'fuchsia', 'black', 'white', 'lime', 'maroon', 'aqua', 'gray', 'green', 'silver', 'olive', 'navy', 'yellow' ];
+
+
+var destinationIcon = 'https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=D|FF0000|000000';
+var originIcon = 'https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=O|FFFF00|000000';
+
+function initialize() {
+  directionsDisplay = new google.maps.DirectionsRenderer();
+  var tahoe = new google.maps.LatLng(39.087436,-120.047035);
+  var opts = {
+    center: tahoe,
+    zoom: 10,
+    styles: [ { "featureType": "administrative",
+                "elementType": "all",
+                "stylers": [ { "visibility": "on"},
+                             { "saturation": -100},
+                             { "lightness": 20   }] },
+              { "featureType": "road",
+                "elementType": "all",
+                "stylers": [ { "visibility": "on" },
+                             { "saturation": -100 },
+                             { "lightness": 40    } ] },
+              { "featureType": "water",
+                "elementType": "all",
+                "stylers": [ { "visibility": "on" },
+                             { "saturation": -10  },
+                             { "lightness": 30    } ] },
+              { "featureType": "landscape.man_made",
+                "elementType": "all",
+                "stylers": [ { "visibility": "simplified" },
+                             { "saturation": -60          },
+                             { "lightness": 10            }] },
+              { "featureType": "landscape.natural",
+                "elementType": "all",
+                "stylers": [ { "visibility": "simplified" },
+                             { "saturation": -60          },
+                             { "lightness": 60            } ] },
+              { "featureType": "poi",
+                "elementType": "all",
+                "stylers": [ {  "visibility": "off" },
+                             {  "saturation": -100  },
+                             {  "lightness": 60     } ] },
+             { "featureType": "transit",
+               "elementType": "all",
+               "stylers": [ { "visibility": "off" },
+                            { "saturation": -100  },
+                            { "lightness": 60     } ] },
+             { "featureType": "landscape",
+               "stylers": [{ "visibility": "off" }] },
+             { "featureType": "poi.park",
+                "elementType": "labels",
+                "stylers": [{ "visibility": "off" }]},
+             { "featureType": "water",
+               "elementType": "labels.text",
+               "stylers": [{ "visibility": "off" }]},
+             { "featureType": "administrative.province",
+               "elementType": "labels.text",
+               "stylers": [{ "visibility": "off" }]},{}],
+     streetViewControl: false,
+     mapTypeControl: false,
+     scrollwheel: false,
+  };
+  map = new google.maps.Map(document.getElementById('map-canvas'), opts);
+  geocoder = new google.maps.Geocoder();
+  directionsDisplay.setMap(map);
+
+  deleteOverlays();
+  locationData.map(function(d) {
+                      addMarker(d.address, d.liters !== 0);
+                    });
+}
+
+function calculateDistances() {
+  if (locationData.length === 0)
+     return;
+  var locationsArray = locationData.map(function(d) {
+                                            return d.address;
+                                         });
+  console.log('Getting distances for the following locations');
+  console.log(locationsArray);
+  var service = new google.maps.DistanceMatrixService();
+  console.log('Requesting ' + locationsArray.len + 'locations');
+  console.log('Requesting ' + (+locationsArray.len)*(+locationsArray.len) + ' elements');
+  service.getDistanceMatrix(
+    {
+      origins: locationsArray,
+      destinations: locationsArray,
+      travelMode: google.maps.TravelMode.DRIVING,
+      unitSystem: google.maps.UnitSystem.IMPERIAL,
+      avoidHighways: false,
+      avoidTolls: false
+    }, callback);
+}
+
+function callback(response, status) {
+  if (status != google.maps.DistanceMatrixStatus.OK) {
+    alert('Error was: ' + status);
+  } else {
+    var origins = response.originAddresses;
+    var destinations = response.destinationAddresses;
+    var outputDiv = document.getElementById('outputDiv');
+    outputDiv.innerHTML = '';
+    deleteOverlays();
+    console.log(response);
+
+    dist = [];
+    for (var i = 0; i < origins.length; i++) {
+      var results = response.rows[i].elements;
+      var row = [];
+      for (var j = 0; j < results.length; j++) {
+        if (i === j) {
+           row.push(0);
+           continue;
+        }
+        row.push(results[j].distance.value);
+        /*
+           outputDiv.innerHTML += origins[i] + ' to ' + destinations[j]
+            + ': ' + results[j].distance.text + ' in '
+            + results[j].duration.text + '<br>';
+        */
+      }
+      dist.push(row);
+    }
+    console.log(dist);
+
+    var spinner = new Spinner({top: '50px', position: 'relative'}).spin(outputDiv);
+
+    console.log('locationData', locationData);
+    console.log('dist', dist);
+
+    var siteNames = locationData.map(function (d) { return d.address; });
+    var demand    = locationData.map(function (d) { return d.liters;  });
+    var capacity  = 4500
+
+    d3.json("/tankertrucks.py")
+       .header("Content-Type", "application/json")
+       .post(JSON.stringify({ 'siteNames' : siteNames,
+                              'demand'    : demand,
+                              'capacity'  : capacity,
+                              'dist'      : dist }),
+                            serverResponse2);
+
+  }
+}
+
+function routeTanker(i, tour, volume) {
+   var j = 0;
+   console.log(i);
+   console.log(volume);
+   for (j = 0; j < tour.length-1; j++) {
+       routeLeg(i, j, volume[j]/4500, tour[j], tour[j+1]);
+   }
+}
+
+function routeLeg(tanker, leg, vol, start, end) {
+   var weight;
+   if (vol > 0) {
+       weight = Math.max(vol*20, 2);
+   } else {
+       weight = 2;
+   }
+   var request = { origin: start,
+                   destination: end,
+                   travelMode: google.maps.TravelMode.DRIVING };
+
+   directionsService.route(request,
+                       function(response, status) {
+                           if (status == google.maps.DirectionsStatus.OK) {
+                               renderArray[curr] = new google.maps.DirectionsRenderer();
+                               renderArray[curr].setMap(map);
+                               renderArray[curr].setOptions({
+                                                              perserveViewport: true,
+                                                              polylineOptions: {
+                                                                  strokeColor: colors[tanker % colors.length],
+                                                                  strokeOpacity: .6,
+                                                                  strokeWeight: weight
+                                                              },
+                                                              markerOptions: {
+                                                                  visible: false
+                                                            }});
+                               renderArray[curr].setDirections(response);
+                               curr++;
+                               if (curr === currmax) {
+                                  locationData.map(function(o) {
+                                                    addMarker(o.address, o.liters !== 0);
+                                                    });
+                               }
+                           }
+                       });
+
+}
+
+function serverResponse2(error, data) {
+
+   console.log('serverResponse', error, data);
+
+   d3.select('#outputDiv').html('<pre>' + data.directions + '</pre>');
+   var tours   = data.tours;
+   var volumes = data.volumes;
+   var i = 0;
+   for (i = 0; i < curr; i++) {
+        renderArray[i].setDirections({routes: []});
+   }
+   curr  = 0;
+   currmax = 0
+   for (i = 0; i < tours.length; i++) {
+       currmax = currmax + tours[i].length-1;
+   }
+   for (i = 0; i < tours.length; i++) {
+      routeTanker(i, tours[i], volumes[i]);
+   }
+}
+
+function addMarker(location, isDestination) {
+  var icon;
+  if (isDestination) {
+    icon = destinationIcon;
+  } else {
+    icon = originIcon;
+  }
+  geocoder.geocode({'address': location}, function(results, status) {
+    if (status == google.maps.GeocoderStatus.OK) {
+      bounds.extend(results[0].geometry.location);
+      map.fitBounds(bounds);
+      var marker = new google.maps.Marker({
+        map: map,
+        position: results[0].geometry.location,
+        icon: icon
+      });
+      markersArray.push(marker);
+    } else {
+      alert('Geocode was not successful for the following reason: '
+        + status);
+    }
+  });
+}
+
+function deleteOverlays() {
+  for (var i = 0; i < markersArray.length; i++) {
+    markersArray[i].setMap(null);
+  }
+  markersArray = [];
+}
+
+google.maps.event.addDomListener(window, 'load', initialize);
+
+function findpos() {
+  var location   = document.getElementById("address").value;
+  var nliters = document.getElementById("liters").value;
+
+  if (!location || 0 === location.length || !location.trim()) {
+     return;
+  }
+
+  nliters = Math.min(Math.max(+nliters, 1), 4500);
+
+  locationData.push({ address: location, liters: +nliters});
+  addMarker(location, nliters !== 0);
+
+  d3.select('.clientrow').selectAll('td')
+    .data(locationData)
+    .enter()
+    .append('td')
+    .text(function(d) {
+            if (d.address === 'Reno') {
+                return "Client";
+            } else {
+                return d.address;
+            }
+         });
+
+  d3.select('.demandrow').selectAll('td')
+    .data(locationData)
+    .enter()
+    .append('td')
+    .text(function(d) {
+             if (d.liters > 0) {
+                 return d.liters;
+             } else {
+                 return "Demand";
+             }
+         });
+}
+
+var infwidth = 720;
+var infheight = 120;
+
+var infsvg = d3.select('#infsvg').append('svg')
+               .attr('width', infwidth)
+               .attr('height', infheight);
+
+var nodes = [{name: "Reno", x:200, y:50, fixed:true},
+             {name: "Incline Village"},
+             {name: "Tahoe City"},
+             {name: "Truckee"}];
+var edges = [{source: 1, target: 2},
+             {source: 2, target: 3},
+             {source: 3, target: 1}];
+
+var force = d3.layout.force()
+              .charge(-90)
+              .linkDistance(60)
+              .size([infwidth, infheight]);
+
+force.nodes(nodes)
+     .links(edges)
+     .start()
+
+var link = infsvg.selectAll(".link")
+             .data(edges)
+           .enter().append("line")
+           .attr("class", "link");
+
+var node = infsvg.selectAll(".node")
+             .data(nodes)
+           .enter().append('g')
+            .attr('class', 'node')
+            .call(force.drag);
+node.append("circle")
+           .attr("r", 6)
+           .style("fill", function (d) {
+                           if (d.name == "Reno") {
+                               return "yellow";
+                           } else {
+                               return "red";
+                           }
+                         });
+node.append('text')
+    .attr("x", 10)
+    .attr("y", ".31em")
+    .text(function (d) { return d.name });
+
+
+force.on("tick", function () {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+   });
+
+
+
+var dwidth = 720;
+var dheight = 220;
+
+var dsvg = d3.select('#distsvg').append('svg')
+               .attr('width', dwidth)
+               .attr('height', dheight);
+
+var distmat = [[0, 59.3, 31.6, 47.8, 34.2, 47.1, 36.1, 31.9],
+               [62.2, 0, 27.9, 21.0, 77.5, 30.0, 27.1, 44.7],
+               [32.2, 27.7, 0, 16.2, 50.0, 39.4, 24.9, 42.6],
+               [50.7, 21.0, 16.4, 0, 66.1, 49.7, 35.2, 52.9],
+               [34.4, 77.4, 49.6, 65.9, 0, 80.8, 67.1, 65.5],
+               [46.9, 30.1, 39.6, 49.7, 80.5, 0, 14.4, 15.0],
+               [36.9, 27.1, 25.2, 35.2, 67.1, 14.4, 0, 17.6],
+               [31.9, 44.7, 62.8, 52.8, 65.6, 15.0, 17.6, 0]];
+
+var distlabels = ["Reno", "South Lake Tahoe", "Carson City", "Garnerville", "Fernerly",
+                  "Tahoe City", "Incline Village", "Truckee"];
+
+var dnodes = [{ name: "Reno", x:400, y:10, fixed:true},
+              { name: "Incline Village"},
+              { name: "South Lake Tahoe"}];
+
+var dlinks = [];
+var u;
+var v;
+var k;
+for (var i = 0; i < distlabels.length; i++) {
+   for (var j = 0; j < distlabels.length; j++) {
+        if (i === j) {
+           continue;
+        }
+        u = -1;
+        v = -1;
+        for (k = 0; k < dnodes.length; k++) {
+            if (distlabels[i] === dnodes[k].name) {
+                u = k;
+                break;
+            }
+        }
+        if (u == -1) {
+           continue;
+        }
+        for (k = 0; k < dnodes.length; k++) {
+            if (distlabels[j] === dnodes[k].name) {
+                v = k;
+                break;
+            }
+        }
+        if (v == -1) {
+           continue;
+        }
+        dlinks.push({source:+u, target:+v, dist: +distmat[i][j]});
+   }
+}
+
+
+var force1 = d3.layout.force()
+               .nodes(dnodes)
+               .links(dlinks)
+               .size([dwidth, dheight])
+               .linkDistance(function(d) { return 3.5*d.dist; })
+               .charge(-30)
+               .on("tick", tick2)
+               .start()
+
+dsvg.append("defs").selectAll("marker")
+    .data(["triangle"])
+  .enter().append("marker")
+    .attr("id", function(d) { return d; })
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 15)
+    .attr("refY", -1.5)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+  .append("path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+
+var path = dsvg.append("g").selectAll("path")
+               .data(force1.links())
+             .enter().append("path")
+              .attr("class", "link1")
+              .attr("marker-end", "url(#triangle)");
+
+var circle = dsvg.append("g").selectAll("circle")
+               .data(force1.nodes())
+             .enter().append("circle")
+                .attr("r", 6)
+                .style("fill", function (d) {
+                           if (d.name == "Reno") {
+                               return "yellow";
+                           } else {
+                               return "red";
+                           }
+                         })
+                .call(force1.drag);
+
+var text = dsvg.append("g").selectAll("text")
+             .data(force1.nodes())
+           .enter().append("text")
+             .attr("x", 8)
+             .attr("y", ".31em")
+             .text(function(d) { return d.name; })
+
+function tick2() {
+  path.attr("d", linkArc);
+  circle.attr("transform", transform);
+  text.attr("transform", transform);
+}
+
+function linkArc(d) {
+  var dx = d.target.x - d.source.x;
+  var dy = d.target.y - d.source.y;
+  var dr = Math.sqrt(dx*dx + dy*dy);
+  return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0, 1 " + d.target.x + "," + d.target.y;
+}
+
+function transform(d) {
+  return "translate(" + d.x + "," + d.y + ")";
+}
+
+
+</script>
+</html>
